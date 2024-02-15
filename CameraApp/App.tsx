@@ -1,66 +1,63 @@
-import React, { useState } from 'react';
-import { Button, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Camera } from 'expo-camera';
-import { CameraType } from 'expo-camera/build/Camera.types';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCameraPermission, useCameraDevice, Camera } from 'react-native-vision-camera';
 
 export default function App() {
-  const [type, setType] = useState<CameraType>(Camera.Constants.Type.back);
-  const [permission, requestPermission] = Camera.useCameraPermissions();
+  const [cameraPosition, setCameraPosition] = useState<'front' | 'back'>('back');
+  const device = useCameraDevice(cameraPosition, {
+    physicalDevices: ['wide-angle-camera'],
+  });
+  const { hasPermission, requestPermission } = useCameraPermission();
 
-  if (!permission) {
-    // Camera permissions are still loading
-    return <View />;
+  useEffect(() => {
+    if (!hasPermission) {
+      requestPermission();
+    }
+  }, [hasPermission]);
+
+  if (!hasPermission) {
+    return <ActivityIndicator />;
   }
 
-  if (!permission.granted) {
-    // Camera permissions are not granted yet
-    return (
-      <View style={styles.container}>
-        <Text style={{ textAlign: 'center' }}>We need your permission to show the camera</Text>
-        <Button onPress={requestPermission} title="grant permission" />
-      </View>
-    );
+  if (!device) {
+    return <Text>Camera device not found</Text>;
   }
 
-  function toggleCameraType() {
-    setType(current => (current === Camera.Constants.Type.back ? Camera.Constants.Type.front : Camera.Constants.Type.back));
-  }
+  const onFlipCameraPressed = useCallback(() => {
+    setCameraPosition((p) => (p === 'back' ? 'front' : 'back'));
+  }, []);
 
   return (
-    <View style={styles.container}>
-      <Camera style={styles.camera} type={type}>
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.button} onPress={toggleCameraType}>
-            <Text style={styles.text}>Flip Camera</Text>
-          </TouchableOpacity>
-        </View>
-      </Camera>
+    <View style={{ flex: 1 }}>
+      <Camera style={styles.camera} device={device} isActive={true} />
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity style={styles.button} onPress={onFlipCameraPressed}>
+          <Text style={styles.buttonText}>Flip Camera</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-  },
   camera: {
     flex: 1,
   },
   buttonContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: 'transparent',
-    margin: 64,
+    position: 'absolute',
+    bottom: 24,
+    alignSelf: 'center',
   },
   button: {
-    flex: 1,
-    alignSelf: 'flex-end',
-    alignItems: 'center',
+    backgroundColor: '#89bef0',
+    borderRadius: 25,
+    paddingVertical: 15,
+    paddingHorizontal: 40,
   },
-  text: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  buttonText: {
     color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
